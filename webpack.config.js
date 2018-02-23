@@ -2,6 +2,7 @@
 const path = require('path')
 const HTMLPlugin = require('html-webpack-plugin')
 const webpack = require('webpack')
+const ExtractPlugin = require('extract-text-webpack-plugin')
 
 const isDev = (process.env.NODE_ENV === 'development')    
 
@@ -26,28 +27,7 @@ const config = {
                 loader: 'babel-loader'
             },
             {
-                test:/\.css$/,
-                use:[
-                    'style-loader',
-                    'css-loader'
-                ]
-            },
-            { 
-                test:/\.styl/, // css 预处理器s
-                use:[
-                    'style-loader',
-                    'css-loader',
-                    { // 如果已经有source map了，就可以用之前生成的，就不用重新生成，提升效率
-                        loader: 'postcss-loader',
-                        options:{
-                            sourceMap: true
-                        }
-                    },
-                    'stylus-loader' // 依赖于stylus， 会自动生成source-map
-                ]
-            },
-            {
-                test: /\.(jpg|png|gif|jpeg|sng)$/,
+                test: /\.(gif|jpg|jpeg|png|svg)$/,
                 use:[
                     {
                         loader:'url-loader', // 依赖于file-loader
@@ -72,10 +52,24 @@ const config = {
 
 // 根据不同的环境判断，开发环境和正式环境  （webpack-dev-server插件的使用）
 if(isDev){
+    config.module.rules.push({
+        test:/\.styl/, // css 预处理器
+        use:[
+            'style-loader',
+            'css-loader',
+            { // 如果已经有source map了，就可以用之前生成的，就不用重新生成，提升效率
+                loader: 'postcss-loader',
+                options:{
+                    sourceMap: true
+                }
+            },
+            'stylus-loader' // 依赖于stylus， 会自动生成source-map
+        ]
+    })
     // 使用es6和.vue 文件，浏览器是不能直接解析的，
     config.devtool = '#cheap-module-eval-source-map'
     config.devServer = {
-        port: 8001,
+        port: 8002,
         host: '0.0.0.0', // 可以通过本节内网和127.0.0.1同时访问
         overlay:{ // 当出现错误的时候，将错误显示在网页上
             errors: true
@@ -90,6 +84,33 @@ if(isDev){
     config.plugins.push(
         new webpack.HotModuleReplacementPlugin(),
         new webpack.NoEmitOnErrorsPlugin()
+    )
+}else{
+    config.entry = {
+        app: path.join(__dirname, 'src/index.js'),
+        vendor: ['vue']
+    }
+    config.output.filename = '[name].[chunkhash:8].js'
+    config.module.rules.push({
+        test: /\.styl/,
+        use: ExtractPlugin.extract({
+            fallback: 'style-loader',
+            use: [
+                'css-loader',
+                {
+                    loader: 'postcss-loader',
+                    options:{
+                        sourceMap: true,
+                    }
+                },
+                'stylus-loader'
+            ]
+        })
+    })
+    config.plugins.push(
+        new ExtractPlugin('styles.[contentHash:8].css'), 
+        new webpack.optimize.CommonsChunkPlugin({ name: 'vendor' }),
+        new webpack.optimize.CommonsChunkPlugin({ name: 'runtime' })
     )
 }
 
