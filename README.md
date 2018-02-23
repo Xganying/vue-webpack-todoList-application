@@ -1,4 +1,4 @@
-# vue-webpack-todoList_application
+# vue-webpack-todoList-application
 
 webpack + vue 搭建任务清单列表
 
